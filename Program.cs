@@ -1,7 +1,12 @@
+using System.Data;
+using System.Data.Common;
+using System.Data.SqlClient;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<IDbConnection>(conn=>new SqlConnection(builder.Configuration.GetConnectionString("conn")));
 
 var app = builder.Build();
 

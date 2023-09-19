@@ -8,27 +8,32 @@ namespace WebAppMVCDapper.Controllers
 {
     public class CustomerController : Controller
     {
+        private readonly IDbConnection conn;
 
+        public CustomerController(IDbConnection conn)
+        {
+            this.conn = conn; //di
+        }
         public IActionResult Index()
         {
-            string constr = @"Data Source=.\sqlexpress;Initial Catalog=sircldb;Persist Security Info=True;User ID=sa;Password=rai11**";
             List<Customer> customers = new List<Customer>();
-            IDbConnection conn = new SqlConnection(constr);
-            customers=conn.Query<Customer>("select * from Customers").ToList();
-            //return Json(customers);
+            //customers = conn.Query<Customer>("select * from Customers").ToList();
+            customers = conn.Query<Customer>("sp_getcustomers",commandType:CommandType.StoredProcedure).ToList();
+
             return View(customers);
         }
         public IActionResult Details(int id)
         {
-            string constr = @"Data Source=.\sqlexpress;Initial Catalog=sircldb;Persist Security Info=True;User ID=sa;Password=rai11**";
-            Customer? customer = new Customer();  
-            IDbConnection conn = new SqlConnection(constr);
-            customer = conn.Query<Customer>($"select * from customers where customerid={id}").SingleOrDefault();
+            Customer? customer = new Customer();
+            DynamicParameters parameters = new DynamicParameters();
+            parameters.Add("@id", id);
+            customer = conn.Query<Customer>("sp_getcustomerbyid", parameters,commandType: CommandType.StoredProcedure).SingleOrDefault();
             if(customer!=null)
             {
                 return View(customer);
             }
             return View(null);
+           
             //return Json(customers);
             
         }
@@ -40,20 +45,22 @@ namespace WebAppMVCDapper.Controllers
         [HttpPost]
         public IActionResult Create(Customer customer)
         {
-            string constr = @"Data Source=.\sqlexpress;Initial Catalog=sircldb;Persist Security Info=True;User ID=sa;Password=rai11**";
-            
-            IDbConnection conn = new SqlConnection(constr);
-            string cmd = "insert into customers(firstname,lastname,email) values(@FirstName,@LastName,@Email)";
-            int affectedrows=conn.Execute(cmd, customer);
+            //string cmd = "insert into customers(firstname,lastname,email) values(@FirstName,@LastName,@Email)";
+            //int affectedrows=conn.Execute(cmd, customer);
+            //return RedirectToAction("Index");
+            DynamicParameters parameters= new DynamicParameters();
+            parameters.Add("@fname", customer.FirstName);
+            parameters.Add("@lname", customer.LastName);
+            parameters.Add("@email", customer.Email);
+
+            int x = conn.Execute("sp_addcustomer", parameters, commandType: CommandType.StoredProcedure);
             return RedirectToAction("Index");
         }
 
         [HttpGet]
         public IActionResult Edit(int id)
         {
-            string constr = @"Data Source=.\sqlexpress;Initial Catalog=sircldb;Persist Security Info=True;User ID=sa;Password=rai11**";
             Customer? customer = new Customer();
-            IDbConnection conn = new SqlConnection(constr);
             customer = conn.Query<Customer>($"select * from customers where customerid={id}").SingleOrDefault();
             if (customer != null)
             {
@@ -64,9 +71,6 @@ namespace WebAppMVCDapper.Controllers
         [HttpPost]
         public IActionResult Edit(Customer customer)
         {
-            string constr = @"Data Source=.\sqlexpress;Initial Catalog=sircldb;Persist Security Info=True;User ID=sa;Password=rai11**";
-
-            IDbConnection conn = new SqlConnection(constr);
             string cmd = "update customers set firstname=@FirstName,lastname=@LastName,email=@Email where customerid=@CustomerId";
             int affectedrows = conn.Execute(cmd, customer);
             return RedirectToAction("Index");
@@ -75,11 +79,8 @@ namespace WebAppMVCDapper.Controllers
       
         public IActionResult Delete(int id)
         {
-            string constr = @"Data Source=.\sqlexpress;Initial Catalog=sircldb;Persist Security Info=True;User ID=sa;Password=rai11**";
             Customer? customer = new Customer();
-            IDbConnection conn = new SqlConnection(constr);
             int x= conn.Execute($"delete  from customers where customerid={id}");
-
             return RedirectToAction("Index");
         }
     }
